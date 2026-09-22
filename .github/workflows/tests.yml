@@ -1,38 +1,58 @@
-name: tests
+name: Tests
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, testing, backend, frontend]
   pull_request:
-
-permissions:
-  contents: read
+    branches: [main, testing, backend, frontend]
 
 jobs:
-  ci:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+      - name: Checkout código
+        uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+      - name: Configurar PHP
+        uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          tools: composer:v2
+          extensions: mbstring, dom, fileinfo, mysql, sqlite3, pdo_sqlite
           coverage: none
 
-      - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - name: Configurar Node
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
 
-      - name: Setup Application
-        run: composer setup
+      - name: Cache de dependencias Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
 
-      - name: Run CI Checks
-        run: composer ci:check
+      - name: Instalar dependencias PHP
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Instalar dependencias Node
+        run: npm ci
+
+      - name: Compilar assets
+        run: npm run build
+
+      - name: Copiar .env
+        run: cp .env.example .env
+
+      - name: Generar app key
+        run: php artisan key:generate
+
+      - name: Configurar SQLite en memoria
+        run: |
+          echo "DB_CONNECTION=sqlite" >> .env
+          echo "DB_DATABASE=:memory:" >> .env
+
+      - name: Correr tests (PHPUnit)
+        run: php artisan test
