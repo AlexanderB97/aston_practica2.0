@@ -59,4 +59,16 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             ? Str::substr($initials, 0, 1).Str::substr($initials, -1)
             : $initials;
     }
+
+    /**
+     * Get the dashboard route the user should be redirected to based on their role.
+     */
+    public function redirectPathForRole(): string
+    {
+        return match ($this->rol) {
+            'admin' => route('admin.dashboard'),
+            'docente' => route('docente.dashboard'),
+            'estudiante' => route('estudiante.dashboard'),
+        };
+    }
 }
